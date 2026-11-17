@@ -1,1378 +1,200 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sir Jake Burger — Kiosk, Kitchen &amp; Bluetooth Buzzer Simulator</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-    .font-mono-code {
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    /* Buzzer Disc Vibration & Pulse Animations */
-    @keyframes discVibrate {
-      0%, 100% { transform: translate(0, 0) rotate(0deg); }
-      15% { transform: translate(-3px, -2px) rotate(-1.2deg); }
-      30% { transform: translate(3px, 2px) rotate(1.2deg); }
-      45% { transform: translate(-3px, 2px) rotate(-1deg); }
-      60% { transform: translate(3px, -2px) rotate(1deg); }
-      75% { transform: translate(-2px, -1px) rotate(-0.8deg); }
-      90% { transform: translate(2px, 1px) rotate(0.8deg); }
-    }
-
-    .disc-ringing {
-      animation: discVibrate 0.16s infinite linear;
-    }
-
-    @keyframes packetFlow {
-      0% { transform: translateX(-100%); opacity: 0; }
-      20% { opacity: 1; }
-      80% { opacity: 1; }
-      100% { transform: translateX(100%); opacity: 0; }
-    }
-
-    .flow-active {
-      animation: packetFlow 0.9s ease-in-out;
-    }
-
-    /* Custom subtle scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(56, 189, 248, 0.25);
-      border-radius: 9999px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(56, 189, 248, 0.45);
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sir Jake Burger</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:#030712;color:#f1f5f9;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{padding:14px 16px;font-weight:800;font-size:18px;background:#1d4ed8}
+header.k{background:#059669}header.b{background:#4338ca}
+main{padding:14px;max-width:520px;margin:auto}
+button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:12px 14px;background:#2563eb;color:#fff;cursor:pointer}
+button.g{background:#334155}button.r{background:#e11d48}button.e{background:#059669}
+button:disabled{opacity:.4}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:#0f172a;border:1px solid #1e3a8a;border-radius:14px;padding:12px;margin-bottom:10px}
+.item{text-align:left;background:#0f172a;border:1px solid #1e3a8a;display:block;width:100%}
+.big{font-size:44px;font-weight:900;text-align:center;margin:10px 0}
+input{font:inherit;width:100%;padding:12px;border-radius:10px;border:1px solid #1e3a8a;background:#020617;color:#fff;margin:6px 0}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.muted{color:#94a3b8;font-size:13px}
+.ring{animation:sh .16s infinite linear;background:#1d4ed8}
+@keyframes sh{0%,100%{transform:translate(0)}25%{transform:translate(-4px,2px)}75%{transform:translate(4px,-2px)}}
+.disc{width:240px;height:240px;border-radius:50%;margin:20px auto;border:5px solid #1e3a8a;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center}
+</style>
 </head>
-<body class="bg-[#030712] text-slate-100 min-h-screen flex flex-col selection:bg-blue-600 selection:text-white">
+<body>
+<div id="app"></div>
 
-  <!-- Top Header & Architecture Data-Flow Bar -->
-  <header class="sticky top-0 z-30 bg-[#030712]/95 backdrop-blur border-b border-blue-950/80 px-4 py-3">
-    <div class="max-w-[1600px] mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-      <!-- Brand -->
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-500/25">
-            🍔
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">Sir Jake Burger — Kiosk &amp; Buzzer Lab</h1>
-              <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">
-                Grade 10 IoT Simulator
-              </span>
-            </div>
-            <p class="text-xs text-slate-400">MIT App Inventor + CloudDB + Arduino HC-05 Bluetooth</p>
-          </div>
-        </div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+// ====== 1. PASTE YOUR FIREBASE CONFIG HERE ======
+const firebaseConfig = {
+  apiKey: "PASTE_HERE",
+  authDomain: "PASTE_HERE",
+  databaseURL: "PASTE_HERE",   // must be the Realtime Database URL
+  projectId: "PASTE_HERE",
+  appId: "PASTE_HERE"
+};
+// ================================================
 
-        <!-- Mobile Quick Action: Code Reference -->
-        <button onclick="openCodeModal('arduino')" class="lg:hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-          Code &amp; Blocks
-        </button>
-      </div>
+const MENU = [
+  ['burger','Sir Jake Burger',65,'🍔'],['cheese','Double Cheeseburger',99,'🧀'],
+  ['bacon','Bacon Overload Burger',120,'🥓'],['chicken','Crispy Chicken Meal',95,'🍗'],
+  ['spag','Pinoy Spaghetti',75,'🍝'],['fries','Golden Fries',45,'🍟'],
+  ['c1','Combo A: Burger+Fries+Tea',135,'🍱'],['c2','Combo B: Chicken+Rice+Drink',125,'🍛'],
+  ['c3','Combo C: Dbl Burger+Spag+Sundae',185,'👑'],['sundae','Choco Fudge Sundae',35,'🍨'],
+  ['float','Coke Float',50,'🥤'],['tea','House Iced Tea',30,'🧋'],['water','Bottled Water',20,'💧']
+];
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const role = location.hash.slice(1);
+window.onhashchange = () => location.reload();
 
-      <!-- Live Pipeline Flow Visualizer -->
-      <div class="flex items-center justify-between sm:justify-center gap-1.5 sm:gap-2 bg-slate-950/90 border border-blue-950/60 rounded-2xl px-3 py-2 overflow-x-auto text-xs">
-        <div id="node-kiosk" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-blue-900/50 text-slate-200 font-semibold whitespace-nowrap transition-all duration-300">
-          <span class="w-2 h-2 rounded-full bg-blue-400"></span>
-          App 1: Kiosk
-        </div>
-        <div class="relative w-6 sm:w-10 h-1 bg-slate-800 rounded-full overflow-hidden shrink-0">
-          <div id="link-clouddb" class="absolute inset-0 bg-cyan-400 opacity-0 rounded-full"></div>
-        </div>
-        <div id="node-clouddb" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-cyan-900/50 text-cyan-300 font-semibold whitespace-nowrap transition-all duration-300">
-          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-          CloudDB
-        </div>
-        <div class="relative w-6 sm:w-10 h-1 bg-slate-800 rounded-full overflow-hidden shrink-0">
-          <div id="link-kitchen" class="absolute inset-0 bg-emerald-400 opacity-0 rounded-full"></div>
-        </div>
-        <div id="node-kitchen" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-emerald-900/50 text-emerald-300 font-semibold whitespace-nowrap transition-all duration-300">
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          App 2: Kitchen
-        </div>
-        <div class="relative w-6 sm:w-10 h-1 bg-slate-800 rounded-full overflow-hidden shrink-0">
-          <div id="link-bt" class="absolute inset-0 bg-blue-400 opacity-0 rounded-full"></div>
-        </div>
-        <div id="node-disc" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-indigo-900/50 text-indigo-300 font-semibold whitespace-nowrap transition-all duration-300">
-          <span id="dot-disc" class="w-2 h-2 rounded-full bg-slate-500"></span>
-          HC-05 Disc
-        </div>
-      </div>
-
-      <!-- Desktop Action Buttons -->
-      <div class="hidden lg:flex items-center gap-2">
-        <button onclick="toggleAudioMute()" id="btn-mute-desktop" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-blue-900/50 text-slate-200 text-xs font-semibold transition">
-          <span id="mute-icon-desktop">🔊</span>
-          <span id="mute-label-desktop">Buzzer Sound: ON</span>
-        </button>
-        <button onclick="openCodeModal('arduino')" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/25 transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-          MIT Blocks &amp; Arduino Code
-        </button>
-      </div>
-    </div>
-
-    <!-- Mobile Panel Switcher Tabs -->
-    <div class="lg:hidden mt-2.5 grid grid-cols-3 gap-1.5 bg-slate-950 p-1 rounded-xl border border-blue-950">
-      <button onclick="setMobileTab('kiosk')" id="tab-kiosk" class="py-2 px-2 rounded-lg text-xs font-bold bg-blue-600 text-white transition">
-        1. Kiosk App
-      </button>
-      <button onclick="setMobileTab('kitchen')" id="tab-kitchen" class="py-2 px-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition relative">
-        2. Kitchen App
-        <span id="mobile-order-badge" class="hidden ml-1 px-1.5 py-0.2 bg-emerald-500 text-slate-950 rounded-full text-[10px] font-black">0</span>
-      </button>
-      <button onclick="setMobileTab('disc')" id="tab-disc" class="py-2 px-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition">
-        3. Buzzer Disc
-      </button>
-    </div>
-  </header>
-
-  <!-- Toast Notification Banner -->
-  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
-
-  <!-- Main 3-Column Interactive Simulator Workspace -->
-  <main class="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-stretch">
-
-    <!-- =================================================================== -->
-    <!-- PANEL 1: APP 1 - ORDER KIOSK (MIT APP INVENTOR)                     -->
-    <!-- =================================================================== -->
-    <section id="panel-kiosk" class="lg:col-span-4 bg-slate-900 border border-blue-950/80 rounded-3xl flex flex-col overflow-hidden shadow-2xl">
-      <!-- Phone Frame Header -->
-      <div class="bg-gradient-to-r from-blue-600 to-indigo-700 px-4 py-3 flex items-center justify-between text-white">
-        <div>
-          <span class="text-[10px] font-extrabold uppercase tracking-wider bg-slate-950/30 px-2 py-0.5 rounded-full">App 1 • Customer Kiosk</span>
-          <h2 class="text-base font-black tracking-tight mt-0.5">Self-Order Touch Kiosk</h2>
-        </div>
-        <button onclick="openCodeModal('app1')" class="px-2.5 py-1.5 rounded-xl bg-slate-950/80 hover:bg-slate-950 text-blue-300 text-xs font-semibold transition">
-          View Blocks
-        </button>
-      </div>
-
-      <!-- Kiosk Screen Navigation Sub-bar -->
-      <div class="bg-slate-950/70 border-b border-blue-950/60 px-4 py-2 flex items-center justify-between text-xs">
-        <div class="flex items-center gap-1.5">
-          <button onclick="switchKioskScreen('menu')" id="kiosk-nav-menu" class="px-2.5 py-1 rounded-lg font-bold bg-blue-600 text-white transition">
-            MenuView
-          </button>
-          <button onclick="switchKioskScreen('cart')" id="kiosk-nav-cart" class="px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition">
-            CartView (<span id="kiosk-cart-count">0</span>)
-          </button>
-          <button onclick="switchKioskScreen('pay')" id="kiosk-nav-pay" class="px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition">
-            PayView
-          </button>
-        </div>
-        <span class="text-[11px] font-mono-code text-blue-300">Next: #<span id="next-order-num">101</span></span>
-      </div>
-
-      <!-- Kiosk Body -->
-      <div class="p-4 flex-1 flex flex-col justify-between overflow-y-auto">
-        <!-- VIEW A: MenuView -->
-        <div id="kiosk-view-menu" class="space-y-3">
-          <div class="flex items-center justify-between">
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tap items to add to cart</p>
-            <button onclick="quickDemoOrder()" class="text-xs font-semibold text-blue-400 hover:text-blue-300 underline underline-offset-2">
-              + Quick Sample Order
-            </button>
-          </div>
-
-          <!-- Category filter buttons -->
-          <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-            <button onclick="filterMenuCategory('all')" id="cat-btn-all" class="px-3 py-1.5 rounded-xl font-bold bg-blue-600 text-white shrink-0 transition">All Items</button>
-            <button onclick="filterMenuCategory('burgers')" id="cat-btn-burgers" class="px-3 py-1.5 rounded-xl font-semibold bg-slate-950 border border-blue-950 text-slate-300 hover:text-white shrink-0 transition">Burgers</button>
-            <button onclick="filterMenuCategory('combos')" id="cat-btn-combos" class="px-3 py-1.5 rounded-xl font-semibold bg-slate-950 border border-blue-950 text-slate-300 hover:text-white shrink-0 transition">Combos 🍱</button>
-            <button onclick="filterMenuCategory('sides')" id="cat-btn-sides" class="px-3 py-1.5 rounded-xl font-semibold bg-slate-950 border border-blue-950 text-slate-300 hover:text-white shrink-0 transition">Sides &amp; Meals</button>
-            <button onclick="filterMenuCategory('drinks')" id="cat-btn-drinks" class="px-3 py-1.5 rounded-xl font-semibold bg-slate-950 border border-blue-950 text-slate-300 hover:text-white shrink-0 transition">Drinks &amp; Desserts</button>
-          </div>
-
-          <div id="menu-grid" class="grid grid-cols-2 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
-            <!-- Populated via JS -->
-          </div>
-        </div>
-
-        <!-- VIEW B: CartView -->
-        <div id="kiosk-view-cart" class="hidden flex-1 flex flex-col justify-between space-y-3">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-bold text-white">Your Order Tray (ListCart)</h3>
-              <button onclick="clearKioskCart()" class="text-xs font-semibold text-rose-400 hover:text-rose-300 px-2 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20">
-                Clear Cart
-              </button>
-            </div>
-            <div id="cart-items-list" class="space-y-2 max-h-64 overflow-y-auto pr-1">
-              <!-- Cart items injected here -->
-            </div>
-          </div>
-
-          <div class="pt-3 border-t border-blue-950/80 space-y-3">
-            <div class="flex items-center justify-between text-base font-extrabold">
-              <span class="text-slate-300">Total Amount:</span>
-              <span class="text-blue-400 text-xl font-mono-code">₱<span id="cart-total-display">0</span></span>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <button onclick="switchKioskScreen('menu')" class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition">
-                &larr; Add More
-              </button>
-              <button onclick="proceedToPayment()" id="btn-proceed-pay" class="py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-black transition">
-                Proceed to Pay &rarr;
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- VIEW C: PayView -->
-        <div id="kiosk-view-pay" class="hidden flex-1 flex flex-col justify-between space-y-3">
-          <div class="space-y-3">
-            <div class="bg-slate-950 border border-blue-950 rounded-2xl p-3.5 text-center">
-              <p class="text-xs text-slate-400 uppercase font-semibold">Assigned Order &amp; Buzzer Disc</p>
-              <p class="text-3xl font-black text-blue-400 font-mono-code mt-0.5">Order #<span id="pay-order-number">101</span></p>
-              <p class="text-xs text-slate-400 mt-1">Amount Due: <strong class="text-white font-mono-code">₱<span id="pay-total-amount">0</span></strong></p>
-            </div>
-
-            <!-- Payment Method Selector -->
-            <div>
-              <label class="block text-xs font-semibold text-slate-400 mb-1.5">Select Payment Method</label>
-              <div class="grid grid-cols-2 gap-2">
-                <button onclick="setPaymentMethod('Cash')" id="pay-method-cash" class="py-2 px-3 rounded-xl border text-xs font-bold bg-blue-600/20 border-blue-500 text-blue-300 transition">
-                  💵 Cash Payment
-                </button>
-                <button onclick="setPaymentMethod('Cashless')" id="pay-method-cashless" class="py-2 px-3 rounded-xl border text-xs font-bold bg-slate-950 border-blue-950 text-slate-400 hover:text-white transition">
-                  📱 GCash / Card
-                </button>
-              </div>
-            </div>
-
-            <!-- Cash Tendered Input -->
-            <div id="cash-input-box" class="bg-slate-950/80 border border-blue-950 rounded-2xl p-3 space-y-2">
-              <div class="flex items-center justify-between gap-2">
-                <label for="cash-tendered" class="text-xs font-semibold text-slate-300">Cash Tendered (₱):</label>
-                <input id="cash-tendered" type="number" min="0" step="5" oninput="calculateCashChange()" placeholder="e.g. 200" class="w-28 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-blue-900 text-right font-mono-code text-sm font-bold text-white focus:outline-none focus:border-blue-500" />
-              </div>
-              <div class="flex gap-1.5 flex-wrap">
-                <button onclick="setQuickCash('exact')" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-300">Exact</button>
-                <button onclick="setQuickCash(100)" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px] font-mono-code text-slate-300">₱100</button>
-                <button onclick="setQuickCash(200)" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px] font-mono-code text-slate-300">₱200</button>
-                <button onclick="setQuickCash(500)" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px] font-mono-code text-slate-300">₱500</button>
-              </div>
-              <div class="flex items-center justify-between pt-1 border-t border-blue-950 text-xs">
-                <span class="text-slate-400">Change:</span>
-                <span id="cash-change-display" class="font-mono-code font-bold text-emerald-400">₱0</span>
-              </div>
-            </div>
-
-            <!-- Cashless Info Box -->
-            <div id="cashless-info-box" class="hidden bg-blue-950/30 border border-blue-500/30 rounded-2xl p-3 text-center space-y-1">
-              <p class="text-xs font-bold text-blue-300">QRPh / E-Wallet Ready</p>
-              <p class="text-[11px] text-slate-400">Tap confirm once customer scans &amp; completes payment.</p>
-            </div>
-          </div>
-
-          <div class="pt-3 border-t border-blue-950 space-y-2">
-            <button onclick="confirmAndSendOrder()" id="btn-confirm-order" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wide shadow-lg shadow-blue-600/25 transition">
-              Confirm &amp; Send to CloudDB 🚀
-            </button>
-            <button onclick="switchKioskScreen('cart')" class="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
-              Back to Cart
-            </button>
-          </div>
-        </div>
-
-        <!-- Bottom Action Bar on MenuView -->
-        <div id="kiosk-menu-footer" class="pt-3 mt-3 border-t border-blue-950/80">
-          <button onclick="switchKioskScreen('cart')" class="w-full py-3 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-between shadow-lg shadow-blue-600/20 transition">
-            <span>View Cart (<span id="footer-cart-count">0</span> items)</span>
-            <span class="font-mono-code text-sm">₱<span id="footer-cart-total">0</span> &rarr;</span>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- =================================================================== -->
-    <!-- PANEL 2: APP 2 - KITCHEN DISPLAY SCREEN + BLUETOOTH CONTROLLER      -->
-    <!-- =================================================================== -->
-    <section id="panel-kitchen" class="hidden lg:flex lg:col-span-4 bg-slate-900 border border-blue-950/80 rounded-3xl flex-col overflow-hidden shadow-2xl">
-      <!-- Kitchen Header -->
-      <div class="bg-gradient-to-r from-emerald-600 to-teal-700 px-4 py-3 flex items-center justify-between text-white">
-        <div>
-          <span class="text-[10px] font-extrabold uppercase tracking-wider bg-slate-950/25 px-2 py-0.5 rounded-full">App 2 • Kitchen Display</span>
-          <h2 class="text-base font-black tracking-tight mt-0.5">Kitchen Monitor &amp; BT Sender</h2>
-        </div>
-        <button onclick="openCodeModal('app2')" class="px-2.5 py-1.5 rounded-xl bg-slate-950/80 hover:bg-slate-950 text-emerald-300 text-xs font-semibold transition">
-          View Blocks
-        </button>
-      </div>
-
-      <!-- Bluetooth Connection Strip (ListPickerBT) -->
-      <div class="bg-slate-950/70 border-b border-blue-950/60 px-4 py-2.5 flex items-center justify-between gap-2">
-        <div class="flex items-center gap-2 min-w-0">
-          <span id="bt-status-dot" class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
-          <div class="truncate">
-            <p id="bt-status-text" class="text-xs font-bold text-slate-200 truncate">HC-05 Disconnected</p>
-            <p class="text-[10px] text-slate-400 font-mono-code">MAC: 98:D3:31:F5:B2:10 • PIN 1234</p>
-          </div>
-        </div>
-        <button onclick="toggleBluetoothConnection()" id="btn-bt-connect" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shrink-0 shadow transition">
-          Connect HC-05
-        </button>
-      </div>
-
-      <!-- Now Serving Banner -->
-      <div class="bg-slate-950 border-b border-blue-950/60 px-4 py-2 flex items-center justify-between text-xs">
-        <span class="text-slate-400 font-semibold">NOW SERVING:</span>
-        <span id="now-serving-badge" class="font-mono-code font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg">
-          — NONE —
-        </span>
-      </div>
-
-      <!-- CloudDB Active Orders Queue (ListOrders) -->
-      <div class="p-4 flex-1 flex flex-col justify-between overflow-y-auto space-y-3">
-        <div class="flex-1 flex flex-col min-h-0">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
-              CloudDB Tag: <code class="text-cyan-400 font-mono-code">"active_orders"</code>
-            </span>
-            <span id="kitchen-queue-count" class="text-xs font-mono-code font-bold text-slate-300 bg-slate-800 px-2 py-0.5 rounded-md">
-              0 pending
-            </span>
-          </div>
-
-          <div id="kitchen-orders-list" class="space-y-2.5 flex-1 overflow-y-auto pr-1">
-            <!-- Orders populated via JS -->
-          </div>
-        </div>
-
-        <!-- Kitchen Action Controls ('R' and 'S') -->
-        <div class="pt-3 border-t border-blue-950/80 space-y-2">
-          <p class="text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Selected Order: <strong id="selected-order-label" class="text-white font-mono-code">None</strong></span>
-            <span>Serial Cmd: <code class="text-blue-300 font-mono-code">'R' / 'S'</code></span>
-          </p>
-
-          <div class="grid grid-cols-2 gap-2.5">
-            <button onclick="sendReadySignal()" id="btn-send-ready" class="py-3 px-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wide shadow-lg shadow-blue-600/25 flex flex-col items-center justify-center gap-0.5 transition">
-              <span>🔔 Food Ready</span>
-              <span class="text-[10px] font-mono-code opacity-85">SendText("R")</span>
-            </button>
-
-            <button onclick="sendStopSignal()" id="btn-send-stop" class="py-3 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wide shadow-lg shadow-emerald-600/20 flex flex-col items-center justify-center gap-0.5 transition">
-              <span>✅ Stop / Claimed</span>
-              <span class="text-[10px] font-mono-code opacity-85">SendText("S")</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- =================================================================== -->
-    <!-- PANEL 3: HARDWARE SIMULATOR - ARDUINO BUZZER DISC                   -->
-    <!-- =================================================================== -->
-    <section id="panel-disc" class="hidden lg:flex lg:col-span-4 bg-slate-900 border border-blue-950/80 rounded-3xl flex-col overflow-hidden shadow-2xl">
-      <!-- Hardware Header -->
-      <div class="bg-gradient-to-r from-indigo-700 to-blue-800 px-4 py-3 flex items-center justify-between text-white">
-        <div>
-          <span class="text-[10px] font-extrabold uppercase tracking-wider bg-slate-950/30 px-2 py-0.5 rounded-full">Hardware • Arduino Nano + HC-05</span>
-          <h2 class="text-base font-black tracking-tight mt-0.5">Wireless Buzzer Disc Simulator</h2>
-        </div>
-        <button onclick="openCodeModal('arduino')" class="px-2.5 py-1.5 rounded-xl bg-slate-950/80 hover:bg-slate-950 text-indigo-200 text-xs font-semibold transition">
-          .INO &amp; Wiring
-        </button>
-      </div>
-
-      <!-- Disc Status & Sound Toggle -->
-      <div class="bg-slate-950/70 border-b border-blue-950/60 px-4 py-2 flex items-center justify-between text-xs">
-        <div class="flex items-center gap-2">
-          <span class="text-slate-400">State:</span>
-          <span id="disc-state-badge" class="px-2 py-0.5 rounded-md font-mono-code font-bold bg-slate-800 text-slate-300">
-            IDLE (ringing = false)
-          </span>
-        </div>
-        <button onclick="toggleAudioMute()" id="btn-mute-mobile" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold transition">
-          🔊 Sound ON
-        </button>
-      </div>
-
-      <!-- Interactive Physical Buzzer Disc Visual -->
-      <div class="p-4 flex-1 flex flex-col justify-between space-y-4 overflow-y-auto">
-        <div class="flex flex-col items-center justify-center py-3">
-          <!-- Outer Coaster / Disc Housing -->
-          <div id="buzzer-disc-housing" class="relative w-56 h-56 rounded-full bg-gradient-to-b from-slate-800 to-slate-950 border-4 border-blue-900 shadow-[0_15px_40px_rgba(0,0,0,0.75)] flex flex-col items-center justify-center p-4 transition-all duration-200">
-            <!-- Top Red Alert LED (Pin D7) -->
-            <div class="flex items-center gap-2 mb-2">
-              <div id="disc-led" class="w-4 h-4 rounded-full bg-rose-950 border border-rose-800 transition-all duration-75"></div>
-              <span class="text-[10px] font-mono-code text-slate-400">D7 LED</span>
-            </div>
-
-            <!-- Disc Center Display -->
-            <div class="w-32 h-32 rounded-full bg-slate-900 border border-blue-950 flex flex-col items-center justify-center text-center shadow-inner">
-              <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Customer Pager</span>
-              <span id="disc-order-display" class="text-2xl font-black font-mono-code text-white mt-0.5">#101</span>
-              <span id="disc-alert-label" class="text-[10px] font-bold text-slate-400 mt-1">STANDBY</span>
-            </div>
-
-            <!-- Hardware Pin Indicators at Bottom of Disc -->
-            <div class="mt-2.5 flex items-center gap-2 text-[9px] font-mono-code">
-              <span id="pin-d8-badge" class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">D8:BUZ</span>
-              <span id="pin-d9-badge" class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">D9:MOT</span>
-              <span id="pin-bt-badge" class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">RX/TX</span>
-            </div>
-          </div>
-
-          <!-- 30s Auto-Timeout Progress Bar -->
-          <div class="w-full max-w-xs mt-4 space-y-1">
-            <div class="flex items-center justify-between text-[11px] font-mono-code text-slate-400">
-              <span>Auto-Shutoff Timer (30s):</span>
-              <span id="disc-timer-text">30.0s</span>
-            </div>
-            <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-blue-950">
-              <div id="disc-timer-bar" class="h-full bg-blue-500 w-full transition-all duration-100"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Serial Monitor & Manual Hardware Test Buttons -->
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Arduino Serial Monitor (9600 baud)</span>
-            <button onclick="clearSerialLog()" class="text-[11px] text-slate-400 hover:text-white underline">Clear</button>
-          </div>
-          <div id="serial-monitor" class="h-28 bg-slate-950 border border-blue-950 rounded-2xl p-2.5 font-mono-code text-[11px] text-blue-400 overflow-y-auto space-y-1">
-            <div class="text-slate-500">[BOOT] Arduino Nano initialized.</div>
-            <div class="text-slate-500">[BT] SoftwareSerial(10, 11) @ 9600 baud ready.</div>
-          </div>
-
-          <!-- Direct Test Buttons -->
-          <div class="grid grid-cols-2 gap-2 pt-1">
-            <button onclick="simulateHardwareCommand('R', true)" class="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-blue-950 text-xs font-semibold text-blue-300 transition">
-              Test Pulse ('R')
-            </button>
-            <button onclick="simulateHardwareCommand('S', true)" class="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-blue-950 text-xs font-semibold text-slate-300 transition">
-              Force Stop ('S')
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- ===================================================================== -->
-  <!-- REFERENCE MODAL: ARDUINO .INO, WIRING & MIT APP INVENTOR BLOCKS       -->
-  <!-- ===================================================================== -->
-  <div id="code-modal" class="fixed inset-0 z-50 hidden bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
-    <div class="bg-slate-900 border border-blue-900 rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-      <!-- Modal Header -->
-      <div class="px-5 py-4 border-b border-blue-950 flex items-center justify-between gap-3">
-        <div>
-          <h3 class="text-base sm:text-lg font-black text-white">Build Guide: Code, Wiring &amp; MIT App Inventor Blocks</h3>
-          <p class="text-xs text-slate-400">Copy-ready source code and component blueprints for your physical Grade 10 prototype</p>
-        </div>
-        <button onclick="closeCodeModal()" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-bold transition">
-          ✕
-        </button>
-      </div>
-
-      <!-- Modal Tabs -->
-      <div class="px-5 pt-3 bg-slate-950/50 border-b border-blue-950 flex gap-2 overflow-x-auto text-xs font-bold">
-        <button onclick="switchModalTab('arduino')" id="mtab-arduino" class="px-3.5 py-2.5 rounded-t-xl border-b-2 border-blue-500 text-blue-300 bg-slate-900 whitespace-nowrap">
-          1. Arduino Sketch (.ino)
-        </button>
-        <button onclick="switchModalTab('wiring')" id="mtab-wiring" class="px-3.5 py-2.5 rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-white whitespace-nowrap">
-          2. Buzzer Disc Wiring
-        </button>
-        <button onclick="switchModalTab('app1')" id="mtab-app1" class="px-3.5 py-2.5 rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-white whitespace-nowrap">
-          3. App 1: Kiosk Blocks
-        </button>
-        <button onclick="switchModalTab('app2')" id="mtab-app2" class="px-3.5 py-2.5 rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-white whitespace-nowrap">
-          4. App 2: Kitchen + BT Blocks
-        </button>
-      </div>
-
-      <!-- Modal Content Area -->
-      <div class="p-5 overflow-y-auto flex-1 space-y-4 text-sm">
-        <!-- TAB 1: ARDUINO CODE -->
-        <div id="mcontent-arduino" class="space-y-3">
-          <div class="flex items-center justify-between">
-            <p class="text-xs text-slate-300">Upload this sketch to your <strong>Arduino Nano or Uno</strong> (disconnect HC-05 RX pin while uploading).</p>
-            <button onclick="copyCodeBlock('arduino-source-code')" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition">
-              Copy .INO Code
-            </button>
-          </div>
-          <pre id="arduino-source-code" class="bg-slate-950 border border-blue-950 rounded-2xl p-4 font-mono-code text-xs text-blue-300 overflow-x-auto leading-relaxed">#include &lt;SoftwareSerial.h&gt;
-
-SoftwareSerial bt(10, 11); // RX = D10 (to HC-05 TXD), TX = D11 (to HC-05 RXD via divider)
-
-const int BUZZER = 8;
-const int MOTOR  = 9;
-const int LED    = 7;
-
-bool ringing = false;
-bool pulse   = false;
-unsigned long lastToggle = 0;
-unsigned long startTime  = 0;
-
-void allOff() {
-  digitalWrite(BUZZER, LOW);
-  digitalWrite(MOTOR, LOW);
-  digitalWrite(LED, LOW);
+function home() {
+  app.innerHTML = `<header>🍔 Sir Jake Burger</header><main>
+  <p class="muted">Open this page on each phone and pick its job:</p>
+  <a href="#kiosk"><button style="width:100%;margin-bottom:10px">1. Customer Kiosk</button></a>
+  <a href="#kitchen"><button class="e" style="width:100%;margin-bottom:10px">2. Kitchen</button></a>
+  <a href="#buzzer"><button style="width:100%;background:#4338ca">3. Buzzer</button></a></main>`;
 }
 
-void setup() {
-  pinMode(BUZZER, OUTPUT);
-  pinMode(MOTOR, OUTPUT);
-  pinMode(LED, OUTPUT);
-  allOff();
-  bt.begin(9600);
+if (firebaseConfig.apiKey === 'PASTE_HERE') {
+  app.innerHTML = '<header>Setup needed</header><main><p>Paste your Firebase config into index.html first.</p></main>';
+} else if (!['kiosk','kitchen','buzzer'].includes(role)) {
+  home();
+} else {
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  ({kiosk, kitchen, buzzer})[role](db);
 }
 
-void loop() {
-  if (bt.available()) {
-    char c = bt.read();
-    if (c == 'R') { ringing = true; startTime = millis(); }
-    if (c == 'S') { ringing = false; allOff(); }
-  }
-
-  if (ringing) {
-    // Auto shut-off after 30 seconds if unclaimed
-    if (millis() - startTime &gt; 30000UL) {
-      ringing = false;
-      allOff();
-    } else if (millis() - lastToggle &gt; 300) {
-      lastToggle = millis();
-      pulse = !pulse;
-      digitalWrite(BUZZER, pulse);
-      digitalWrite(MOTOR, pulse);
-      digitalWrite(LED, pulse);
-    }
-  }
-}</pre>
-        </div>
-
-        <!-- TAB 2: WIRING PINOUT -->
-        <div id="mcontent-wiring" class="hidden space-y-3">
-          <p class="text-xs text-slate-300">Connect your components on a mini breadboard using the pin map below. Default HC-05 pairing PIN is <code class="text-blue-300 font-mono-code">1234</code>.</p>
-          <div class="overflow-x-auto border border-blue-950 rounded-2xl">
-            <table class="w-full text-left text-xs">
-              <thead class="bg-slate-950 text-slate-300 uppercase font-bold">
-                <tr>
-                  <th class="px-4 py-3">Component Pin</th>
-                  <th class="px-4 py-3">Arduino Pin</th>
-                  <th class="px-4 py-3">Notes &amp; Protection</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-blue-950/60 bg-slate-900/60">
-                <tr>
-                  <td class="px-4 py-2.5 font-semibold text-white">HC-05 VCC / GND</td>
-                  <td class="px-4 py-2.5 font-mono-code text-cyan-300">5V / GND</td>
-                  <td class="px-4 py-2.5 text-slate-400">Main module power</td>
-                </tr>
-                <tr>
-                  <td class="px-4 py-2.5 font-semibold text-white">HC-05 TXD</td>
-                  <td class="px-4 py-2.5 font-mono-code text-cyan-300">D10</td>
-                  <td class="px-4 py-2.5 text-slate-400">Bluetooth TX to Arduino SoftwareSerial RX</td>
-                </tr>
-                <tr>
-                  <td class="px-4 py-2.5 font-semibold text-white">HC-05 RXD</td>
-                  <td class="px-4 py-2.5 font-mono-code text-cyan-300">D11 (via divider)</td>
-                  <td class="px-4 py-2.5 text-slate-400">D11 &rarr; 1k&Omega; &rarr; RXD; RXD &rarr; 2k&Omega; &rarr; GND (3.3V safe logic)</td>
-                </tr>
-                <tr>
-                  <td class="px-4 py-2.5 font-semibold text-white">Active Buzzer (+ / -)</td>
-                  <td class="px-4 py-2.5 font-mono-code text-blue-300">D8 / GND</td>
-                  <td class="px-4 py-2.5 text-slate-400">5V continuous-tone active buzzer</td>
-                </tr>
-                <tr>
-                  <td class="px-4 py-2.5 font-semibold text-white">Red Alert LED (+ / -)</td>
-                  <td class="px-4 py-2.5 font-mono-code text-rose-300">D7 (via 220&Omega;) / GND</td>
-                  <td class="px-4 py-2.5 text-slate-400">Long leg (+) to 220&Omega; resistor</td>
-                </tr>
-                <tr>
-                  <td class="px-4 py-2.5 font-semibold text-white">2N2222 Transistor</td>
-                  <td class="px-4 py-2.5 font-mono-code text-emerald-300">Base: D9 (1k&Omega;), Emitter: GND</td>
-                  <td class="px-4 py-2.5 text-slate-400">Drives the high-current vibration motor safely</td>
-                </tr>
-                <tr>
-                  <td class="px-4 py-2.5 font-semibold text-white">Coin Vibration Motor</td>
-                  <td class="px-4 py-2.5 font-mono-code text-emerald-300">5V &amp; Collector</td>
-                  <td class="px-4 py-2.5 text-slate-400">Add 1N4007 flyback diode across motor (stripe toward 5V)</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- TAB 3: APP 1 BLOCKS -->
-        <div id="mcontent-app1" class="hidden space-y-3">
-          <div class="flex items-center justify-between">
-            <p class="text-xs text-slate-300">MIT App Inventor blocks for <strong>App 1 (Order Kiosk)</strong>. Ensure <code class="text-cyan-300 font-mono-code">CloudDB1</code> uses the same ProjectID &amp; Token as App 2.</p>
-            <button onclick="copyCodeBlock('app1-blocks-code')" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition">
-              Copy App 1 Blocks
-            </button>
-          </div>
-          <pre id="app1-blocks-code" class="bg-slate-950 border border-blue-950 rounded-2xl p-4 font-mono-code text-xs text-blue-200 overflow-x-auto leading-relaxed">// GLOBAL VARIABLES
-initialize global cartList to [ create empty list ]
-initialize global totalAmount to 0
-initialize global orderNumber to 100
-
-// ADD ITEM TO CART (Repeat for Burger ₱65, Chicken ₱95, Combos, Fries, etc.)
-when BtnAddBurger.Click do:
-    add items to list (get global cartList, item: "Sir Jake Burger - ₱65")
-    set global totalAmount to (get global totalAmount + 65)
-    set BtnViewCart.Text to join("VIEW CART (", length of list(get global cartList), ")")
-
-// OPEN CART VIEW
-when BtnViewCart.Click do:
-    set MenuView.Visible to false
-    set CartView.Visible to true
-    set ListCart.Elements to (get global cartList)
-    set LblTotal.Text to join("Total: ₱", get global totalAmount)
-
-// PROCEED TO PAYMENT
-when BtnProceedPay.Click do:
-    set CartView.Visible to false
-    set PayView.Visible to true
-    set global orderNumber to (get global orderNumber + 1)
-    set LblOrderNo.Text to join("Order #", get global orderNumber)
-
-// SEND ORDER TO CLOUDDB
-when BtnConfirmOrder.Click do:
-    call CloudDB1.AppendValueToList(
-        tag: "active_orders",
-        valueToAdd: join("Order #", get global orderNumber, ": ", get global cartList)
-    )
-    set BtnConfirmOrder.Enabled to false
-
-// RESET FOR NEXT CUSTOMER
-when BtnNewOrder.Click do:
-    set global cartList to [ create empty list ]
-    set global totalAmount to 0
-    set BtnViewCart.Text to "VIEW CART (0)"
-    set BtnConfirmOrder.Enabled to true
-    set PayView.Visible to false
-    set MenuView.Visible to true</pre>
-        </div>
-
-        <!-- TAB 4: APP 2 BLOCKS -->
-        <div id="mcontent-app2" class="hidden space-y-3">
-          <div class="flex items-center justify-between">
-            <p class="text-xs text-slate-300">MIT App Inventor blocks for <strong>App 2 (Kitchen Screen + BluetoothClient1)</strong>. Enable <em>Nearby Devices</em> permission on Android 12+.</p>
-            <button onclick="copyCodeBlock('app2-blocks-code')" class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition">
-              Copy App 2 Blocks
-            </button>
-          </div>
-          <pre id="app2-blocks-code" class="bg-slate-950 border border-blue-950 rounded-2xl p-4 font-mono-code text-xs text-emerald-200 overflow-x-auto leading-relaxed">// BLUETOOTH HC-05 PAIRING &amp; CONNECTION
-when ListPickerBT.BeforePicking do:
-    set ListPickerBT.Elements to (BluetoothClient1.AddressesAndNames)
-
-when ListPickerBT.AfterPicking do:
-    if (call BluetoothClient1.Connect(address: ListPickerBT.Selection)) then:
-        set LblBTStatus.Text to "Connected to HC-05 Disc"
-    else:
-        set LblBTStatus.Text to "Connection Failed"
-
-// REAL-TIME CLOUDDB SYNC
-when Screen1.Initialize do:
-    call CloudDB1.GetValue(tag: "active_orders", valueIfTagNotThere: [ create empty list ])
-
-when CloudDB1.GotValue(tag, value) do:
-    if (get tag = "active_orders") then:
-        set ListOrders.Elements to (get value)
-
-when CloudDB1.DataChanged(tag, value) do:
-    if (get tag = "active_orders") then:
-        set ListOrders.Elements to (get value)
-
-// RING BUZZER DISC ('R') &amp; STOP / CLAIM ('S')
-when BtnRing.Click do:
-    if (BluetoothClient1.IsConnected) then:
-        call BluetoothClient1.SendText(text: "R")
-
-when BtnStop.Click do:
-    if (BluetoothClient1.IsConnected) then:
-        call BluetoothClient1.SendText(text: "S")
-    if (ListOrders.SelectionIndex &gt; 0) then:
-        call CloudDB1.RemoveFirstFromList(tag: "active_orders")</pre>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================================== -->
-  <!-- INTERACTIVE SIMULATION ENGINE (JAVASCRIPT + WEB AUDIO API)            -->
-  <!-- ===================================================================== -->
-  <script>
-    // 1. EXPANDED MENU ITEMS (Burgers, Combos, Sides, Drinks & Desserts)
-    const MENU_ITEMS = [
-      { id: 'burger', name: 'Sir Jake Burger', price: 65, emoji: '🍔', category: 'burgers', tag: 'Best Seller' },
-      { id: 'cheeseburger', name: 'Double Cheeseburger', price: 99, emoji: '🧀', category: 'burgers', tag: 'Extra Cheese' },
-      { id: 'baconburger', name: 'Bacon Overload Burger', price: 120, emoji: '🥓', category: 'burgers', tag: 'Premium' },
-      { id: 'chicken', name: 'Crispy Chicken Meal', price: 95, emoji: '🍗', category: 'sides', tag: '1-Pc w/ Rice' },
-      { id: 'spaghetti', name: 'Pinoy Style Spaghetti', price: 75, emoji: '🍝', category: 'sides', tag: 'Sweet & Meaty' },
-      { id: 'fries', name: 'Golden Fries', price: 45, emoji: '🍟', category: 'sides', tag: 'Regular' },
-      { id: 'combo1', name: 'Combo A: Burger + Fries + Tea', price: 135, emoji: '🍱', category: 'combos', tag: 'Value Meal' },
-      { id: 'combo2', name: 'Combo B: Chicken + Rice + Drink', price: 125, emoji: '🍛', category: 'combos', tag: 'Lunch Special' },
-      { id: 'combo3', name: 'Combo C: Double Burger + Spaghetti + Sundae', price: 185, emoji: '👑', category: 'combos', tag: 'Ultimate Feast' },
-      { id: 'sundae', name: 'Choco Fudge Sundae', price: 35, emoji: '🍨', category: 'drinks', tag: 'Dessert' },
-      { id: 'float', name: 'Coke Float', price: 50, emoji: '🥤', category: 'drinks', tag: 'Cold Float' },
-      { id: 'icedtea', name: 'House Iced Tea (16oz)', price: 30, emoji: '🧋', category: 'drinks', tag: 'Refreshing' },
-      { id: 'water', name: 'Bottled Water (500ml)', price: 20, emoji: '💧', category: 'drinks', tag: 'Pure' }
-    ];
-
-    // 2. APPLICATION STATE (Simulates Kiosk + CloudDB + Kitchen + Arduino Disc)
-    let cart = []; // Array of { id, name, price, emoji, qty }
-    let nextOrderNumber = 101;
-    let paymentMethod = 'Cash';
-    let activeOrders = []; // CloudDB "active_orders" list
-    let selectedOrderId = null;
-    let btConnected = false;
-    let isMuted = false;
-    let currentCategory = 'all';
-
-    // Hardware Buzzer Disc State (Mirrors Arduino variables)
-    let discRinging = false;
-    let discPulseOn = false;
-    let discStartTime = 0;
-    let discInterval = null;
-    let audioCtx = null;
-
-    // 3. INITIALIZE UI ON LOAD
-    window.addEventListener('DOMContentLoaded', () => {
-      renderMenuGrid();
-      updateCartUI();
-      renderKitchenOrders();
+// ---------- PHONE 1: KIOSK ----------
+function kiosk(db) {
+  let cart = {}, view = 'menu', pay = 'Cash', done = null, cash = '';
+  const total = () => MENU.reduce((s,m) => s + m[2]*(cart[m[0]]||0), 0);
+  const count = () => Object.values(cart).reduce((a,b) => a+b, 0);
+  window.add = id => { cart[id] = (cart[id]||0)+1; draw(); };
+  window.chg = (id,d) => { cart[id] = (cart[id]||0)+d; if (cart[id] <= 0) delete cart[id]; draw(); };
+  window.go = v => { view = v; draw(); };
+  window.setPay = p => { pay = p; draw(); };
+  window.setCash = v => { cash = v; draw(); };
+  window.send = () => {
+    if (pay === 'Cash' && (+cash||0) < total()) return alert('Not enough cash. Total is ₱' + total());
+    const items = MENU.filter(m => cart[m[0]]).map(m => cart[m[0]] + 'x ' + m[1]).join(', ');
+    const t = total(), p = pay;
+    db.ref('counter').transaction(n => (n||100)+1, (err, ok, snap) => {
+      if (err || !ok) return alert('Could not send order. Check internet.');
+      const num = snap.val();
+      db.ref('orders').push({num, items, total:t, payment:p, status:'PREPARING', ts:Date.now()});
+      done = num; cart = {}; cash = ''; view = 'done'; draw();
     });
-
-    // 4. WEB AUDIO API SYNTHESIZER (Realistic 2.4kHz Piezo Buzzer Beep)
-    function playPiezoBeep() {
-      if (isMuted) return;
-      try {
-        if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') {
-          audioCtx.resume();
-        }
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(2400, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.14);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.15);
-      } catch (e) {
-        // Ignore audio context autoplay restrictions until user clicks
+  };
+  function draw() {
+    let h = '<header>🍔 Sir Jake Burger Kiosk</header><main>';
+    if (view === 'menu') {
+      h += '<div class="grid">' + MENU.map(m => `<button class="item" onclick="add('${m[0]}')">
+        <div style="font-size:26px">${m[3]}</div><div style="font-size:13px">${m[1]}</div>
+        <div style="color:#60a5fa">₱${m[2]} ${cart[m[0]] ? '· ×'+cart[m[0]] : ''}</div></button>`).join('') + '</div>' +
+        `<button style="width:100%;margin-top:12px" onclick="go('cart')" ${count()?'':'disabled'}>View Cart (${count()}) · ₱${total()}</button>`;
+    } else if (view === 'cart') {
+      h += MENU.filter(m => cart[m[0]]).map(m => `<div class="card row"><div>${m[3]} ${m[1]}<div class="muted">₱${m[2]} × ${cart[m[0]]}</div></div>
+        <div><button class="g" onclick="chg('${m[0]}',-1)">−</button> <button class="g" onclick="chg('${m[0]}',1)">+</button></div></div>`).join('') +
+        `<div class="big">₱${total()}</div><div class="grid"><button class="g" onclick="go('menu')">← Add more</button>
+        <button onclick="go('pay')" ${count()?'':'disabled'}>Pay →</button></div>`;
+    } else if (view === 'pay') {
+      h += `<div class="card" style="text-align:center">Amount due<div class="big">₱${total()}</div></div>
+        <div class="grid"><button class="${pay==='Cash'?'':'g'}" onclick="setPay('Cash')">💵 Cash</button>
+        <button class="${pay==='Cashless'?'':'g'}" onclick="setPay('Cashless')">📱 GCash/Card</button></div>`;
+      if (pay === 'Cash') {
+        const ch = (+cash||0) - total();
+        h += `<input type="number" inputmode="numeric" placeholder="Cash tendered ₱" value="${cash}" oninput="cash=this.value;document.getElementById('chg').textContent=(+this.value-${total()}>=0?'₱'+(+this.value-${total()}):'Short')">
+          <div class="muted">Change: <b id="chg">${ch>=0&&cash?'₱'+ch:'—'}</b></div>`;
       }
+      h += `<button class="e" style="width:100%;margin-top:12px" onclick="send()">Confirm & Send Order 🚀</button>
+        <button class="g" style="width:100%;margin-top:8px" onclick="go('cart')">Back</button>`;
+    } else {
+      h += `<div class="card" style="text-align:center"><p>Order sent to the kitchen!</p><div class="big">#${done}</div>
+        <p>Please take <b>Buzzer #${done}</b> and wait for it to ring.</p></div>
+        <button style="width:100%" onclick="cash='';go('menu')">New Order</button>`;
     }
+    app.innerHTML = h + '</main>';
+  }
+  draw();
+}
 
-    function toggleAudioMute() {
-      isMuted = !isMuted;
-      const desktopIcon = document.getElementById('mute-icon-desktop');
-      const desktopLabel = document.getElementById('mute-label-desktop');
-      const mobileBtn = document.getElementById('btn-mute-mobile');
+// ---------- PHONE 2: KITCHEN ----------
+function kitchen(db) {
+  window.setStatus = (k, s) => db.ref('orders/' + k + '/status').set(s);
+  db.ref('orders').on('value', snap => {
+    const list = Object.entries(snap.val() || {}).map(([k,v]) => ({k, ...v}))
+      .filter(o => o.status !== 'CLAIMED').sort((a,b) => a.ts - b.ts);
+    app.innerHTML = `<header class="k">👨‍🍳 Kitchen Display · ${list.length} active</header><main>` +
+      (list.length ? list.map(o => `<div class="card" style="${o.status==='READY'?'border-color:#3b82f6':''}">
+        <div class="row"><b style="font-size:20px">Order #${o.num}</b><span class="muted">${o.status}</span></div>
+        <p>${o.items}</p><div class="muted">${o.payment} · ₱${o.total}</div>
+        <div class="grid" style="margin-top:10px">
+          <button onclick="setStatus('${o.k}','READY')" ${o.status==='READY'?'disabled':''}>🔔 Food Ready</button>
+          <button class="e" onclick="setStatus('${o.k}','CLAIMED')">✅ Claimed</button></div></div>`).join('')
+        : '<p class="muted">No active orders. Waiting for the kiosk…</p>') + '</main>';
+  });
+}
 
-      if (isMuted) {
-        desktopIcon.textContent = '🔇';
-        desktopLabel.textContent = 'Buzzer Sound: OFF';
-        mobileBtn.textContent = '🔇 Sound OFF';
-      } else {
-        desktopIcon.textContent = '🔊';
-        desktopLabel.textContent = 'Buzzer Sound: ON';
-        mobileBtn.textContent = '🔊 Sound ON';
-      }
+// ---------- PHONE 3: BUZZER ----------
+function buzzer(db) {
+  let num = null, status = 'WAITING', ringing = false, timer = null, ctx = null, started = null, lastStatus = '';
+  window.startBuzzer = () => {
+    num = +$('#bn').value;
+    if (!num) return alert('Type your order number');
+    ctx = new (window.AudioContext || window.webkitAudioContext)();  // unlocked by this tap
+    if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
+    db.ref('orders').on('value', snap => {
+      const mine = Object.values(snap.val() || {}).filter(o => o.num === num).pop();
+      status = mine ? mine.status : 'WAITING';
+      if (status === 'READY' && lastStatus !== 'READY') ring();
+      if (status !== 'READY') stopRing();
+      lastStatus = status; draw();
+    });
+    draw();
+  };
+  function beep() {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'square'; o.frequency.value = 2400; g.gain.value = 0.15;
+    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.15);
+  }
+  function ring() {
+    ringing = true; started = Date.now();
+    clearInterval(timer);
+    timer = setInterval(() => {
+      if (Date.now() - started > 30000) return stopRing();   // 30s auto shut-off
+      beep(); if (navigator.vibrate) navigator.vibrate(250);
+    }, 400);
+    draw();
+  }
+  function stopRing() {
+    ringing = false; clearInterval(timer);
+    if (navigator.vibrate) navigator.vibrate(0);
+    draw();
+  }
+  function draw() {
+    if (!num) {
+      app.innerHTML = `<header class="b">📟 Buzzer Disc</header><main><div class="card">
+        <p>Enter the order number on your receipt:</p><input id="bn" type="number" inputmode="numeric" placeholder="e.g. 101">
+        <button style="width:100%" onclick="startBuzzer()">Start Buzzer</button></div></main>`;
+      return;
     }
-
-    // 5. MOBILE TAB SWITCHING
-    function setMobileTab(tab) {
-      const panels = ['kiosk', 'kitchen', 'disc'];
-      panels.forEach((p) => {
-        const panelEl = document.getElementById(panel-${p});
-        const tabEl = document.getElementById(tab-${p});
-        if (p === tab) {
-          panelEl.classList.remove('hidden');
-          panelEl.classList.add('flex');
-          tabEl.className = 'py-2 px-2 rounded-lg text-xs font-bold bg-blue-600 text-white transition relative';
-        } else {
-          panelEl.classList.add('hidden');
-          panelEl.classList.remove('flex');
-          tabEl.className = 'py-2 px-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition relative';
-        }
-      });
-    }
-
-    // 6. KIOSK LOGIC (APP 1)
-    function filterMenuCategory(cat) {
-      currentCategory = cat;
-      ['all', 'burgers', 'combos', 'sides', 'drinks'].forEach((c) => {
-        const btn = document.getElementById(cat-btn-${c});
-        if (btn) {
-          if (c === cat) {
-            btn.className = 'px-3 py-1.5 rounded-xl font-bold bg-blue-600 text-white shrink-0 transition';
-          } else {
-            btn.className = 'px-3 py-1.5 rounded-xl font-semibold bg-slate-950 border border-blue-950 text-slate-300 hover:text-white shrink-0 transition';
-          }
-        }
-      });
-      renderMenuGrid();
-    }
-
-    function renderMenuGrid() {
-      const grid = document.getElementById('menu-grid');
-      const filtered = currentCategory === 'all'
-        ? MENU_ITEMS
-        : MENU_ITEMS.filter((item) => item.category === currentCategory);
-
-      grid.innerHTML = filtered.map((item) => `
-        <button onclick="addToCart('${item.id}')" class="group text-left bg-slate-950 hover:bg-slate-800/90 border border-blue-950/80 hover:border-blue-500/60 rounded-2xl p-3 flex flex-col justify-between transition active:scale-[0.98]">
-          <div class="flex items-start justify-between gap-1">
-            <span class="text-2xl">${item.emoji}</span>
-            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-900 text-slate-400 border border-blue-950">${item.tag}</span>
-          </div>
-          <div class="mt-2.5">
-            <p class="text-xs font-bold text-white group-hover:text-blue-300 transition">${item.name}</p>
-            <div class="flex items-center justify-between mt-1">
-              <span class="font-mono-code text-sm font-extrabold text-blue-400">₱${item.price}</span>
-              <span class="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-blue-500/20 text-blue-300 group-hover:bg-blue-600 group-hover:text-white transition">+ Add</span>
-            </div>
-          </div>
-        </button>
-      `).join('');
-    }
-
-    function addToCart(itemId) {
-      const menuItem = MENU_ITEMS.find((m) => m.id === itemId);
-      if (!menuItem) return;
-
-      const existing = cart.find((c) => c.id === itemId);
-      if (existing) {
-        existing.qty += 1;
-      } else {
-        cart.push({ ...menuItem, qty: 1 });
-      }
-      updateCartUI();
-      showToast(Added ${menuItem.name} (₱${menuItem.price}), 'blue');
-    }
-
-    function changeCartQty(itemId, delta) {
-      const idx = cart.findIndex((c) => c.id === itemId);
-      if (idx === -1) return;
-      cart[idx].qty += delta;
-      if (cart[idx].qty <= 0) {
-        cart.splice(idx, 1);
-      }
-      updateCartUI();
-    }
-
-    function clearKioskCart() {
-      cart = [];
-      updateCartUI();
-      switchKioskScreen('menu');
-    }
-
-    function getCartTotals() {
-      const count = cart.reduce((sum, item) => sum + item.qty, 0);
-      const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-      return { count, total };
-    }
-
-    function updateCartUI() {
-      const { count, total } = getCartTotals();
-
-      document.getElementById('kiosk-cart-count').textContent = count;
-      document.getElementById('footer-cart-count').textContent = count;
-      document.getElementById('footer-cart-total').textContent = total;
-      document.getElementById('cart-total-display').textContent = total;
-      document.getElementById('pay-total-amount').textContent = total;
-      document.getElementById('next-order-num').textContent = nextOrderNumber;
-      document.getElementById('pay-order-number').textContent = nextOrderNumber;
-
-      const proceedBtn = document.getElementById('btn-proceed-pay');
-      proceedBtn.disabled = count === 0;
-
-      const listEl = document.getElementById('cart-items-list');
-      if (cart.length === 0) {
-        listEl.innerHTML = `
-          <div class="text-center py-10 px-4 bg-slate-950/60 border border-dashed border-blue-950 rounded-2xl">
-            <p class="text-xs font-semibold text-slate-400">Your cart is empty.</p>
-            <p class="text-[11px] text-slate-500 mt-1">Select combo meals, burgers, or drinks from MenuView.</p>
-          </div>
-        `;
-      } else {
-        listEl.innerHTML = cart.map((item) => `
-          <div class="flex items-center justify-between bg-slate-950 border border-blue-950/80 rounded-xl px-3 py-2">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="text-lg">${item.emoji}</span>
-              <div class="truncate">
-                <p class="text-xs font-bold text-white truncate">${item.name}</p>
-                <p class="text-[11px] font-mono-code text-slate-400">₱${item.price} × ${item.qty} = <span class="text-blue-400 font-bold">₱${item.price * item.qty}</span></p>
-              </div>
-            </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-              <button onclick="changeCartQty('${item.id}', -1)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">−</button>
-              <span class="w-5 text-center font-mono-code text-xs font-bold">${item.qty}</span>
-              <button onclick="changeCartQty('${item.id}', 1)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">+</button>
-            </div>
-          </div>
-        `).join('');
-      }
-      calculateCashChange();
-    }
-
-    function switchKioskScreen(view) {
-      ['menu', 'cart', 'pay'].forEach((v) => {
-        const viewEl = document.getElementById(kiosk-view-${v});
-        const navEl = document.getElementById(kiosk-nav-${v});
-        if (v === view) {
-          viewEl.classList.remove('hidden');
-          if (v !== 'menu') viewEl.classList.add('flex');
-          navEl.className = 'px-2.5 py-1 rounded-lg font-bold bg-blue-600 text-white transition';
-        } else {
-          viewEl.classList.add('hidden');
-          viewEl.classList.remove('flex');
-          navEl.className = 'px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition';
-        }
-      });
-
-      const footer = document.getElementById('kiosk-menu-footer');
-      if (view === 'menu') {
-        footer.classList.remove('hidden');
-      } else {
-        footer.classList.add('hidden');
-      }
-    }
-
-    function proceedToPayment() {
-      if (cart.length === 0) return;
-      switchKioskScreen('pay');
-      setQuickCash('exact');
-    }
-
-    function setPaymentMethod(method) {
-      paymentMethod = method;
-      const cashBtn = document.getElementById('pay-method-cash');
-      const cashlessBtn = document.getElementById('pay-method-cashless');
-      const cashBox = document.getElementById('cash-input-box');
-      const cashlessBox = document.getElementById('cashless-info-box');
-
-      if (method === 'Cash') {
-        cashBtn.className = 'py-2 px-3 rounded-xl border text-xs font-bold bg-blue-600/20 border-blue-500 text-blue-300 transition';
-        cashlessBtn.className = 'py-2 px-3 rounded-xl border text-xs font-bold bg-slate-950 border-blue-950 text-slate-400 hover:text-white transition';
-        cashBox.classList.remove('hidden');
-        cashlessBox.classList.add('hidden');
-      } else {
-        cashlessBtn.className = 'py-2 px-3 rounded-xl border text-xs font-bold bg-blue-500/20 border-blue-500 text-blue-300 transition';
-        cashBtn.className = 'py-2 px-3 rounded-xl border text-xs font-bold bg-slate-950 border-blue-950 text-slate-400 hover:text-white transition';
-        cashlessBox.classList.remove('hidden');
-        cashBox.classList.add('hidden');
-      }
-    }
-
-    function setQuickCash(amount) {
-      const { total } = getCartTotals();
-      const input = document.getElementById('cash-tendered');
-      input.value = amount === 'exact' ? total : amount;
-      calculateCashChange();
-    }
-
-    function calculateCashChange() {
-      const { total } = getCartTotals();
-      const tendered = parseFloat(document.getElementById('cash-tendered').value) || 0;
-      const change = tendered - total;
-      const display = document.getElementById('cash-change-display');
-      if (change >= 0) {
-        display.textContent = ₱${change.toFixed(0)};
-        display.className = 'font-mono-code font-bold text-emerald-400';
-      } else {
-        display.textContent = Short ₱${Math.abs(change).toFixed(0)};
-        display.className = 'font-mono-code font-bold text-rose-400';
-      }
-    }
-
-    function quickDemoOrder() {
-      cart = [
-        { ...MENU_ITEMS[6], qty: 1 }, // Combo A
-        { ...MENU_ITEMS[9], qty: 1 }  // Sundae
-      ];
-      updateCartUI();
-      switchKioskScreen('pay');
-      setQuickCash(200);
-      showToast('Combo sample order loaded! Click Confirm to send to CloudDB.', 'blue');
-    }
-
-    // 7. SEND ORDER TO CLOUDDB -> KITCHEN DISPLAY
-    function confirmAndSendOrder() {
-      const { count, total } = getCartTotals();
-      if (count === 0) return;
-
-      if (paymentMethod === 'Cash') {
-        const tendered = parseFloat(document.getElementById('cash-tendered').value) || 0;
-        if (tendered < total) {
-          showToast(Insufficient cash! Total is ₱${total}., 'rose');
-          return;
-        }
-      }
-
-      const orderObj = {
-        id: nextOrderNumber,
-        itemsSummary: cart.map((i) => ${i.qty}x ${i.name}).join(', '),
-        total,
-        payment: paymentMethod,
-        status: 'PREPARING',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-      };
-
-      activeOrders.push(orderObj);
-      if (!selectedOrderId) {
-        selectedOrderId = orderObj.id;
-      }
-
-      // Animate Data Flow: Kiosk -> CloudDB -> Kitchen
-      animatePipeline(['link-clouddb', 'link-kitchen']);
-      appendSerialLog([CloudDB] Appended Order #${orderObj.id} (${orderObj.itemsSummary}));
-
-      // Increment order counter & reset kiosk
-      nextOrderNumber += 1;
-      cart = [];
-      updateCartUI();
-      switchKioskScreen('menu');
-      renderKitchenOrders();
-
-      showToast(Order #${orderObj.id} sent to Kitchen Display!, 'emerald');
-    }
-
-    // 8. KITCHEN DISPLAY & BLUETOOTH CONTROLLER (APP 2)
-    function toggleBluetoothConnection() {
-      btConnected = !btConnected;
-      const dot = document.getElementById('bt-status-dot');
-      const text = document.getElementById('bt-status-text');
-      const btn = document.getElementById('btn-bt-connect');
-      const discDot = document.getElementById('dot-disc');
-
-      if (btConnected) {
-        dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0';
-        text.textContent = 'Connected to HC-05 Disc';
-        text.className = 'text-xs font-bold text-emerald-300 truncate';
-        btn.textContent = 'Disconnect';
-        btn.className = 'px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold shrink-0 transition';
-        discDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
-        appendSerialLog('[BT] HC-05 Paired & Connected (RFCOMM Link Up).');
-        showToast('Bluetooth connected to Buzzer Disc (HC-05)', 'emerald');
-      } else {
-        dot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0';
-        text.textContent = 'HC-05 Disconnected';
-        text.className = 'text-xs font-bold text-slate-200 truncate';
-        btn.textContent = 'Connect HC-05';
-        btn.className = 'px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shrink-0 shadow transition';
-        discDot.className = 'w-2 h-2 rounded-full bg-slate-500';
-        appendSerialLog('[BT] Bluetooth link closed.');
-        showToast('Bluetooth disconnected from HC-05', 'rose');
-      }
-    }
-
-    function renderKitchenOrders() {
-      const container = document.getElementById('kitchen-orders-list');
-      const countBadge = document.getElementById('kitchen-queue-count');
-      const mobileBadge = document.getElementById('mobile-order-badge');
-      const selectedLabel = document.getElementById('selected-order-label');
-
-      countBadge.textContent = ${activeOrders.length} active;
-      if (activeOrders.length > 0) {
-        mobileBadge.textContent = activeOrders.length;
-        mobileBadge.classList.remove('hidden');
-      } else {
-        mobileBadge.classList.add('hidden');
-      }
-
-      if (activeOrders.length === 0) {
-        selectedOrderId = null;
-        selectedLabel.textContent = 'None';
-        container.innerHTML = `
-          <div class="text-center py-10 px-4 bg-slate-950/60 border border-dashed border-blue-950 rounded-2xl">
-            <p class="text-xs font-semibold text-slate-400">No active orders in CloudDB.</p>
-            <p class="text-[11px] text-slate-500 mt-1">Place an order on App 1 (Kiosk) to see it appear here live.</p>
-          </div>
-        `;
-        return;
-      }
-
-      if (!activeOrders.some((o) => o.id === selectedOrderId)) {
-        selectedOrderId = activeOrders[0].id;
-      }
-      selectedLabel.textContent = #${selectedOrderId};
-
-      container.innerHTML = activeOrders.map((order) => {
-        const isSelected = order.id === selectedOrderId;
-        const isReady = order.status === 'READY';
-        return `
-          <div onclick="selectKitchenOrder(${order.id})" class="cursor-pointer rounded-2xl p-3 border transition ${
-            isSelected
-              ? 'bg-slate-950 border-blue-500 ring-1 ring-blue-500/40'
-              : 'bg-slate-950/60 border-blue-950 hover:border-blue-900'
-          }">
-            <div class="flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <span class="font-mono-code text-sm font-black text-white">Order #${order.id}</span>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  isReady
-                    ? 'bg-blue-600 text-white animate-pulse'
-                    : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-                }">
-                  ${order.status}
-                </span>
-              </div>
-              <span class="text-[11px] font-mono-code text-slate-400">${order.timestamp}</span>
-            </div>
-            <p class="text-xs text-slate-200 mt-1.5 font-medium">${order.itemsSummary}</p>
-            <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-blue-950/80 text-[11px] text-slate-400">
-              <span>Paid via <strong class="text-slate-300">${order.payment}</strong></span>
-              <span class="font-mono-code font-bold text-blue-400">₱${order.total}</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function selectKitchenOrder(orderId) {
-      selectedOrderId = orderId;
-      document.getElementById('disc-order-display').textContent = #${orderId};
-      renderKitchenOrders();
-    }
-
-    // 9. TRIGGER BLUETOOTH COMMANDS ('R' = Ring, 'S' = Stop)
-    function sendReadySignal() {
-      if (!selectedOrderId) {
-        showToast('Select an active order first!', 'rose');
-        return;
-      }
-      if (!btConnected) {
-        showToast('Connect HC-05 Bluetooth first!', 'rose');
-        return;
-      }
-
-      const order = activeOrders.find((o) => o.id === selectedOrderId);
-      if (order) {
-        order.status = 'READY';
-        document.getElementById('disc-order-display').textContent = #${order.id};
-        document.getElementById('now-serving-badge').textContent = ORDER #${order.id};
-      }
-
-      renderKitchenOrders();
-      animatePipeline(['link-bt']);
-      simulateHardwareCommand('R', false);
-      showToast(Sent 'R' via Bluetooth → Disc #${selectedOrderId} Ringing!, 'blue');
-    }
-
-    function sendStopSignal() {
-      if (btConnected) {
-        animatePipeline(['link-bt']);
-        simulateHardwareCommand('S', false);
-      } else {
-        simulateHardwareCommand('S', true);
-      }
-
-      if (selectedOrderId) {
-        const claimedId = selectedOrderId;
-        activeOrders = activeOrders.filter((o) => o.id !== claimedId);
-        appendSerialLog([CloudDB] Removed Order #${claimedId} (Claimed).);
-        showToast(Order #${claimedId} claimed & buzzer stopped ('S')., 'emerald');
-        renderKitchenOrders();
-      }
-    }
-
-    // 10. ARDUINO BUZZER DISC HARDWARE SIMULATION
-    function simulateHardwareCommand(cmd, isManualTest) {
-      const prefix = isManualTest ? '[TEST]' : '[BT RX]';
-      if (cmd === 'R') {
-        appendSerialLog(${prefix} Received 'R' -> ringing = true (30s timeout started));
-        startDiscRinging();
-      } else if (cmd === 'S') {
-        appendSerialLog(${prefix} Received 'S' -> ringing = false; allOff());
-        stopDiscRinging();
-      }
-    }
-
-    function startDiscRinging() {
-      discRinging = true;
-      discStartTime = Date.now();
-      discPulseOn = true;
-
-      const housing = document.getElementById('buzzer-disc-housing');
-      const stateBadge = document.getElementById('disc-state-badge');
-      const alertLabel = document.getElementById('disc-alert-label');
-
-      housing.classList.add('disc-ringing', 'border-blue-500');
-      stateBadge.textContent = 'RINGING (ringing = true)';
-      stateBadge.className = 'px-2 py-0.5 rounded-md font-mono-code font-bold bg-blue-600/20 text-blue-300 border border-blue-500/40';
-      alertLabel.textContent = 'ORDER READY!';
-      alertLabel.className = 'text-[10px] font-black text-blue-400 mt-1';
-
-      if (discInterval) clearInterval(discInterval);
-
-      // Mirrors Arduino loop(): toggles every 300ms, shuts off at 30,000ms
-      discInterval = setInterval(() => {
-        const elapsed = Date.now() - discStartTime;
-        const remaining = Math.max(0, 30000 - elapsed);
-
-        document.getElementById('disc-timer-text').textContent = ${(remaining / 1000).toFixed(1)}s;
-        document.getElementById('disc-timer-bar').style.width = ${(remaining / 30000) * 100}%;
-
-        if (remaining <= 0) {
-          appendSerialLog('[TIMEOUT] 30,000ms elapsed -> auto allOff()');
-          stopDiscRinging();
-          return;
-        }
-
-        discPulseOn = !discPulseOn;
-        updateDiscHardwarePins(discPulseOn);
-        if (discPulseOn) {
-          playPiezoBeep();
-        }
-      }, 300);
-
-      updateDiscHardwarePins(true);
-      playPiezoBeep();
-    }
-
-    function stopDiscRinging() {
-      discRinging = false;
-      discPulseOn = false;
-      if (discInterval) {
-        clearInterval(discInterval);
-        discInterval = null;
-      }
-
-      const housing = document.getElementById('buzzer-disc-housing');
-      const stateBadge = document.getElementById('disc-state-badge');
-      const alertLabel = document.getElementById('disc-alert-label');
-
-      housing.classList.remove('disc-ringing', 'border-blue-500');
-      stateBadge.textContent = 'IDLE (ringing = false)';
-      stateBadge.className = 'px-2 py-0.5 rounded-md font-mono-code font-bold bg-slate-800 text-slate-300';
-      alertLabel.textContent = 'STANDBY';
-      alertLabel.className = 'text-[10px] font-bold text-slate-400 mt-1';
-
-      document.getElementById('disc-timer-text').textContent = '30.0s';
-      document.getElementById('disc-timer-bar').style.width = '100%';
-      updateDiscHardwarePins(false);
-    }
-
-    function updateDiscHardwarePins(isHigh) {
-      const led = document.getElementById('disc-led');
-      const d8 = document.getElementById('pin-d8-badge');
-      const d9 = document.getElementById('pin-d9-badge');
-      const bt = document.getElementById('pin-bt-badge');
-
-      if (isHigh) {
-        led.className = 'w-4 h-4 rounded-full bg-blue-500 shadow-[0_0_16px_#3b82f6] border border-blue-300 transition-all duration-75';
-        d8.className = 'px-1.5 py-0.5 rounded bg-blue-600 text-white font-bold';
-        d9.className = 'px-1.5 py-0.5 rounded bg-indigo-600 text-white font-bold';
-        bt.className = 'px-1.5 py-0.5 rounded bg-cyan-600 text-white font-bold';
-      } else {
-        led.className = 'w-4 h-4 rounded-full bg-rose-950 border border-rose-800 transition-all duration-75';
-        d8.className = 'px-1.5 py-0.5 rounded bg-slate-800 text-slate-400';
-        d9.className = 'px-1.5 py-0.5 rounded bg-slate-800 text-slate-400';
-        bt.className = 'px-1.5 py-0.5 rounded bg-slate-800 text-slate-400';
-      }
-    }
-
-    // 11. SERIAL LOG, PIPELINE ANIMATION & MODAL HELPERS
-    function appendSerialLog(message) {
-      const monitor = document.getElementById('serial-monitor');
-      const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const line = document.createElement('div');
-      line.innerHTML = <span class="text-slate-500">[${time}]</span> ${message};
-      monitor.appendChild(line);
-      monitor.scrollTop = monitor.scrollHeight;
-    }
-
-    function clearSerialLog() {
-      document.getElementById('serial-monitor').innerHTML = '<div class="text-slate-500">[CLEARED] Serial monitor ready.</div>';
-    }
-
-    function animatePipeline(linkIds) {
-      linkIds.forEach((id) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.classList.remove('flow-active');
-        void el.offsetWidth; // trigger reflow
-        el.classList.add('flow-active');
-      });
-    }
-
-    function openCodeModal(tab = 'arduino') {
-      document.getElementById('code-modal').classList.remove('hidden');
-      switchModalTab(tab);
-    }
-
-    function closeCodeModal() {
-      document.getElementById('code-modal').classList.add('hidden');
-    }
-
-    function switchModalTab(tab) {
-      const tabs = ['arduino', 'wiring', 'app1', 'app2'];
-      tabs.forEach((t) => {
-        const btn = document.getElementById(mtab-${t});
-        const content = document.getElementById(mcontent-${t});
-        if (t === tab) {
-          btn.className = 'px-3.5 py-2.5 rounded-t-xl border-b-2 border-blue-500 text-blue-300 bg-slate-900 whitespace-nowrap';
-          content.classList.remove('hidden');
-        } else {
-          btn.className = 'px-3.5 py-2.5 rounded-t-xl border-b-2 border-transparent text-slate-400 hover:text-white whitespace-nowrap';
-          content.classList.add('hidden');
-        }
-      });
-    }
-
-    function copyCodeBlock(elementId) {
-      const el = document.getElementById(elementId);
-      if (!el) return;
-      const textArea = document.createElement('textarea');
-      textArea.value = el.textContent;
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand('copy');
-        showToast('Copied to clipboard!', 'blue');
-      } catch (err) {
-        showToast('Unable to copy automatically.', 'rose');
-      }
-      document.body.removeChild(textArea);
-    }
-
-    function showToast(message, color = 'blue') {
-      const container = document.getElementById('toast-container');
-      const toast = document.createElement('div');
-      const colors = {
-        blue: 'bg-slate-900 border-blue-500/50 text-blue-200',
-        emerald: 'bg-slate-900 border-emerald-500/50 text-emerald-200',
-        rose: 'bg-slate-900 border-rose-500/50 text-rose-200'
-      };
-      toast.className = pointer-events-auto px-4 py-2.5 rounded-2xl border shadow-xl text-xs font-semibold flex items-center justify-between gap-2 transition-all duration-300 ${colors[color] || colors.blue};
-      toast.innerHTML = <span>${message}</span>;
-      container.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(8px)';
-        setTimeout(() => toast.remove(), 300);
-      }, 2600);
-    }
-  </script>
+    app.innerHTML = `<header class="b">📟 Buzzer Disc</header><main>
+      <div class="disc ${ringing ? 'ring' : ''}"><div class="muted">Order</div><div class="big" style="margin:0">#${num}</div>
+      <b>${ringing ? '🔔 ORDER READY!' : status === 'READY' ? 'Ready (silenced)' : status === 'WAITING' ? 'Waiting…' : 'Preparing…'}</b></div>
+      ${ringing ? '<button class="r" style="width:100%" onclick="stopRing()">Stop</button>' : ''}
+      <button class="g" style="width:100%;margin-top:10px" onclick="location.reload()">Change number</button></main>`;
+  }
+  window.stopRing = stopRing;
+  draw();
+}
+</script>
 </body>
 </html>
